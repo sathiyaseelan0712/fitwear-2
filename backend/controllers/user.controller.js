@@ -1,7 +1,9 @@
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcrypt");
-const User = require("../models/User"); 
-const { JWT_SECRET, JWT_EXPIRES_IN } = require("../config/config");
+const User = require("../models/User");
+
+const JWT_SECRET = process.env.JWT_SECRET || "fitwear";
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "1h";
 
 const generateToken = (user) => {
   return jwt.sign({ id: user.id, role: user.role }, JWT_SECRET, {
@@ -9,12 +11,12 @@ const generateToken = (user) => {
   });
 };
 
-// Login Controller
 exports.login = async (req, res) => {
   const { email, password } = req.body;
 
   try {
     const user = await User.findOne({ email });
+    console.log(user);
     if (!user) {
       return res.status(401).json({ message: "Invalid email or password" });
     }
@@ -35,6 +37,7 @@ exports.login = async (req, res) => {
       },
     });
   } catch (error) {
+    console.log(error);
     res.status(500).json({ message: "Server error", error });
   }
 };
@@ -59,16 +62,20 @@ exports.register = async (req, res) => {
     await newUser.save();
 
     const token = generateToken(newUser);
+    console.log(token);
     res.status(201).json({
-      token,
-      user: {
-        id: newUser.id,
-        name: newUser.name,
-        email: newUser.email,
-        role: newUser.role,
+      data: {
+        token,
+        user: {
+          id: newUser.id,
+          name: newUser.name,
+          email: newUser.email,
+          role: newUser.role,
+        },
       },
     });
   } catch (error) {
+    console.log(error);
     res.status(500).json({ message: "Server error", error });
   }
 };
@@ -82,11 +89,13 @@ exports.forgotPassword = async (req, res) => {
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
-
-    // Generate a password reset token (you can use a library like crypto for this)
     const resetToken = jwt.sign({ id: user.id }, JWT_SECRET, {
       expiresIn: "1h",
     });
+
+    // Send the reset token via email (implement email sending logic here)
+    // Example: await sendEmail(user.email, 'Password Reset', `Your reset token: ${resetToken}`);
+    console.log(`Generated reset token: ${resetToken}`); // Log for debugging purposes
 
     // Send the reset token via email (implement email sending logic here)
     // Example: await sendEmail(user.email, 'Password Reset', `Your reset token: ${resetToken}`);
