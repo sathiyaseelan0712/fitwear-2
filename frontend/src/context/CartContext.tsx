@@ -1,165 +1,103 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import axios from 'axios';
-import { useAuth } from './AuthContext';
-import { API_URL } from '../config/constants';
-import { toast } from 'react-hot-toast';
 
 interface CartItem {
-  _id: string;
+  id: string;
   productId: string;
   name: string;
   price: number;
-  image: string;
-  size: string;
   quantity: number;
+  image: string;
+  size?: string;
+  color?: string;
 }
 
 interface CartContextType {
   items: CartItem[];
-  addToCart: (productId: string, name: string, price: number, image: string, size: string, quantity: number) => Promise<void>;
-  removeFromCart: (itemId: string) => Promise<void>;
-  updateQuantity: (itemId: string, quantity: number) => Promise<void>;
-  clearCart: () => Promise<void>;
-  loading: boolean;
-  total: number;
+  addToCart: (item: Omit<CartItem, 'id'>) => void;
+  removeFromCart: (id: string) => void;
+  updateQuantity: (id: string, quantity: number) => void;
+  clearCart: () => void;
+  totalItems: number;
+  cartTotal: number;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
+export const CartProvider = ({ children }: { children: ReactNode }) => {
+  const [items, setItems] = useState<CartItem[]>([]);
+
+  useEffect(() => {
+    // Load cart from localStorage
+    const savedCart = localStorage.getItem('fitwear_cart');
+    if (savedCart) {
+      setItems(JSON.parse(savedCart));
+    }
+  }, []);
+
+  useEffect(() => {
+    // Save cart to localStorage whenever it changes
+    localStorage.setItem('fitwear_cart', JSON.stringify(items));
+  }, [items]);
+
+  const addToCart = (item: Omit<CartItem, 'id'>) => {
+    setItems(prevItems => {
+      const existingItem = prevItems.find(
+        i => i.productId === item.productId && i.size === item.size && i.color === item.color
+      );
+      
+      if (existingItem) {
+        return prevItems.map(i =>
+          i.id === existingItem.id ? { ...i, quantity: i.quantity + item.quantity } : i
+        );
+      } else {
+        return [...prevItems, { ...item, id: Math.random().toString(36).substr(2, 9) }];
+      }
+    });
+  };
+
+  const removeFromCart = (id: string) => {
+    setItems(prevItems => prevItems.filter(item => item.id !== id));
+  };
+
+  const updateQuantity = (id: string, quantity: number) => {
+    if (quantity <= 0) {
+      removeFromCart(id);
+      return;
+    }
+    
+    setItems(prevItems =>
+      prevItems.map(item => (item.id === id ? { ...item, quantity } : item))
+    );
+  };
+
+  const clearCart = () => {
+    setItems([]);
+  };
+
+  const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
+  const cartTotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+
+  return (
+    <CartContext.Provider
+      value={{
+        items,
+        addToCart,
+        removeFromCart,
+        updateQuantity,
+        clearCart,
+        totalItems,
+        cartTotal
+      }}
+    >
+      {children}
+    </CartContext.Provider>
+  );
+};
+
 export const useCart = () => {
   const context = useContext(CartContext);
-  if (!context) {
+  if (context === undefined) {
     throw new Error('useCart must be used within a CartProvider');
   }
   return context;
-};
-
-interface CartProviderProps {
-  children: ReactNode;
-}
-
-export const CartProvider = ({ children }: CartProviderProps) => {
-  const [items, setItems] = useState<CartItem[]>([]);
-  const [loading, setLoading] = useState(false);
-  const { isAuthenticated, user } = useAuth();
-
-  // Calculate total price
-  const total = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
-
-  // Fetch cart items when authenticated
-  useEffect(() => {
-    const fetchCart = async () => {
-      if (isAuthenticated) {
-        setLoading(true);
-        try {
-          const response = await axios.get(`${API_URL}/cart`, {
-            headers: { Authorization: `Bearer ${document.cookie.replace(/(?:(?:^|.*;\s*)token\s*=\s*([^;]*).*$)|^.*$/, '$1')}` }
-          });
-          setItems(response.data.items || []);
-        } catch (error) {
-          console.error('Error fetching cart:', error);
-          toast.error('Failed to load your cart');
-        } finally {
-          setLoading(false);
-        }
-      } else {
-        // Clear cart when logged out
-        setItems([]);
-      }
-    };
-
-    fetchCart();
-  }, [isAuthenticated, user]);
-
-  const addToCart = async (productId: string, name: string, price: number, image: string, size: string, quantity: number) => {
-    setLoading(true);
-    try {
-      const response = await axios.post(`${API_URL}/cart`, {
-        productId,
-        size,
-        quantity
-      }, {
-        headers: { Authorization: `Bearer ${document.cookie.replace(/(?:(?:^|.*;\s*)token\s*=\s*([^;]*).*$)|^.*$/, '$1')}` }
-      });
-      
-      // Update local state with returned cart data
-      setItems(response.data.items || []);
-      toast.success('Added to cart!');
-    } catch (error) {
-      console.error('Error adding to cart:', error);
-      toast.error('Failed to add item to cart');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const removeFromCart = async (itemId: string) => {
-    setLoading(true);
-    try {
-      await axios.delete(`${API_URL}/cart/item/${itemId}`, {
-        headers: { Authorization: `Bearer ${document.cookie.replace(/(?:(?:^|.*;\s*)token\s*=\s*([^;]*).*$)|^.*$/, '$1')}` }
-      });
-      
-      // Update local state
-      setItems(items.filter(item => item._id !== itemId));
-      toast.success('Item removed from cart');
-    } catch (error) {
-      console.error('Error removing from cart:', error);
-      toast.error('Failed to remove item from cart');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const updateQuantity = async (itemId: string, quantity: number) => {
-    if (quantity < 1) return;
-    
-    setLoading(true);
-    try {
-      await axios.put(`${API_URL}/cart/item/${itemId}`, {
-        quantity
-      }, {
-        headers: { Authorization: `Bearer ${document.cookie.replace(/(?:(?:^|.*;\s*)token\s*=\s*([^;]*).*$)|^.*$/, '$1')}` }
-      });
-      
-      // Update local state
-      setItems(items.map(item => 
-        item._id === itemId ? { ...item, quantity } : item
-      ));
-    } catch (error) {
-      console.error('Error updating quantity:', error);
-      toast.error('Failed to update quantity');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const clearCart = async () => {
-    setLoading(true);
-    try {
-      await axios.delete(`${API_URL}/cart`, {
-        headers: { Authorization: `Bearer ${document.cookie.replace(/(?:(?:^|.*;\s*)token\s*=\s*([^;]*).*$)|^.*$/, '$1')}` }
-      });
-      
-      // Clear local state
-      setItems([]);
-    } catch (error) {
-      console.error('Error clearing cart:', error);
-      toast.error('Failed to clear cart');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const value = {
-    items,
-    addToCart,
-    removeFromCart,
-    updateQuantity,
-    clearCart,
-    loading,
-    total
-  };
-
-  return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 };

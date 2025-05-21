@@ -1,155 +1,95 @@
-import {
-  createContext,
-  useContext,
-  useState,
-  useEffect,
-  ReactNode,
-} from "react";
-import Cookies from "js-cookie";
-import { jwtDecode } from "jwt-decode";
-import axios from "axios";
-import { API_URL } from "../config/constants";
+import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 interface User {
   id: string;
   name: string;
   email: string;
-  role: "user" | "admin";
+  isAdmin?: boolean;
 }
 
 interface AuthContextType {
-  user: User | null;
-  loading: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  signup: (name: string, email: string, password: string) => Promise<void>;
-  logout: () => void;
-  forgotPassword: (email: string) => Promise<void>;
-  resetPassword: (token: string, password: string) => Promise<void>;
   isAuthenticated: boolean;
   isAdmin: boolean;
+  user: User | null;
+  login: (email: string, password: string) => Promise<void>;
+  logout: () => void;
+  loading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error("useAuth must be used within an AuthProvider");
-  }
-  return context;
-};
-
-interface AuthProviderProps {
-  children: ReactNode;
-}
-
-export const AuthProvider = ({ children }: AuthProviderProps) => {
+export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
   useEffect(() => {
-    const initAuth = async () => {
-      const token = Cookies.get("token");
-      if (token) {
-        try {
-          // Validate token expiration
-          const decodedToken = jwtDecode<{ exp: number }>(token);
-          const currentTime = Date.now() / 1000;
-
-          if (decodedToken.exp < currentTime) {
-            Cookies.remove("token");
-            setUser(null);
-          } else {
-            // Get user profile
-            const response = await axios.get(`${API_URL}/auth/profile`, {
-              headers: { Authorization: `Bearer ${token}` },
-            });
-            setUser(response.data);
-          }
-        } catch (error) {
-          console.error("Error validating token:", error);
-          Cookies.remove("token");
-          setUser(null);
-        }
-      }
-      setLoading(false);
-    };
-
-    initAuth();
+    // Check for existing session on initial load
+    const storedUser = localStorage.getItem('fitwear_user');
+    if (storedUser) {
+      setUser(JSON.parse(storedUser));
+    }
+    setLoading(false);
   }, []);
 
   const login = async (email: string, password: string) => {
-    try {
-      const response = await axios.post(`${API_URL}/auth/login`, {
-        email,
-        password,
-      });
-      const { token, user } = response.data;
-      Cookies.set("token", token, { expires: 7 });
-      setUser(user);
-    } catch (error) {
-      console.error("Login error:", error);
-      throw error;
-    }
-  };
-
-  const signup = async (name: string, email: string, password: string) => {
-    try {
-      const response = await axios.post(`${API_URL}/auth/register`, {
-        name,
-        email,
-        password,
-      });
-      // console.log(response);
-      const { token, user } = response.data;
-      Cookies.set('token', token, { expires: 7 });
-      setUser(user);
-    } catch (error) {
-      console.error("Signup error:", error);
-      throw error;
-    }
+    // In a real app, you would call your API here
+    // This is a mock implementation
+    return new Promise<void>((resolve, reject) => {
+      setTimeout(() => {
+        if (email === 'admin@fitwear.com' && password === 'admin123') {
+          const adminUser = {
+            id: '1',
+            name: 'Admin',
+            email: 'admin@fitwear.com',
+            isAdmin: true
+          };
+          setUser(adminUser);
+          localStorage.setItem('fitwear_user', JSON.stringify(adminUser));
+          resolve();
+        } else if (email && password) {
+          const regularUser = {
+            id: '2',
+            name: 'John Doe',
+            email: email
+          };
+          setUser(regularUser);
+          localStorage.setItem('fitwear_user', JSON.stringify(regularUser));
+          resolve();
+        } else {
+          reject(new Error('Invalid credentials'));
+        }
+      }, 500);
+    });
   };
 
   const logout = () => {
-    Cookies.remove("token");
     setUser(null);
+    localStorage.removeItem('fitwear_user');
+    navigate('/');
   };
 
-  const forgotPassword = async (email: string) => {
-    try {
-      await axios.post(`${API_URL}/auth/forgot-password`, { email });
-    } catch (error) {
-      console.error("Forgot password error:", error);
-      throw error;
-    }
-  };
+  return (
+    <AuthContext.Provider
+      value={{
+        isAuthenticated: !!user,
+        isAdmin: user?.isAdmin || false,
+        user,
+        login,
+        logout,
+        loading
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
+};
 
-  const resetPassword = async (token: string, password: string) => {
-    try {
-      await axios.post(`${API_URL}/auth/reset-password`, {
-        token,
-        password,
-      });
-    } catch (error) {
-      console.error("Reset password error:", error);
-      throw error;
-    }
-  };
-
-  const isAuthenticated = !!user;
-  const isAdmin = user?.role === "admin";
-
-  const value = {
-    user,
-    loading,
-    login,
-    signup,
-    logout,
-    forgotPassword,
-    resetPassword,
-    isAuthenticated,
-    isAdmin,
-  };
-
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
 };

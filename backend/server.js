@@ -2,12 +2,11 @@ const express = require("express");
 const cors = require("cors");
 const dotenv = require("dotenv");
 const logger = require("morgan");
-const connectDB = require("./config/db.js");
+const { connectDB } = require("./config/db.js");
+const path = require('path');
 
-// const productRoutes = require('./routes/productRoutes.js');
-// const cartRoutes = require('./routes/cartRoutes.js');
-// const orderRoutes = require('./routes/orderRoutes.js');
 const authRouter = require("./routes/authRouter.js");
+const productRoutes = require("./routes/productRoutes");
 
 dotenv.config();
 
@@ -19,20 +18,19 @@ app.use(cors());
 app.use(express.json());
 app.use(logger("dev"));
 
-// Routes
-app.use("/api/auth", authRouter);
-// app.use('/api/products', productRoutes);
-// app.use('/api/cart', cartRoutes);
-// app.use('/api/orders', orderRoutes);
+app.use('/public', express.static(path.join(__dirname, 'public')));
 
-// Error handling middleware
-app.use((err, req, res, next) => {
-  const statusCode = err.statusCode || 500;
-  res.status(statusCode).json({
-    message: err.message,
-    stack: process.env.NODE_ENV === "production" ? null : err.stack,
-  });
+// Routes
+app.use((req, res, next) => {
+  console.log('Received Content-Type:', req.headers['content-type']);
+  next();
 });
+
+app.use("/api/auth", authRouter);
+app.use("/api/products", productRoutes); 
+
+
+
 
 const PORT = process.env.PORT || 8080;
 
