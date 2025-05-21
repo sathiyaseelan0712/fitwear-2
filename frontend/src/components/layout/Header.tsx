@@ -11,7 +11,8 @@ import {
   ShoppingCart, 
   Settings,
   ChevronDown,
-  Search
+  Search,
+  Heart
 } from 'lucide-react';
 
 const Header = () => {
@@ -135,7 +136,16 @@ const Header = () => {
         
         {/* Icons - Right Side */}
         <div className="flex items-center space-x-4">
-          {/* Cart - Always visible */}
+          {/* Wishlist */}
+          <Link 
+            to="/wishlist" 
+            className="flex items-center text-gray-700 hover:text-blue-600 transition-colors"
+          >
+            <Heart className="h-5 w-5" />
+            <span className="ml-1 hidden lg:inline">Wishlist</span>
+          </Link>
+          
+          {/* Cart */}
           <Link 
             to="/cart" 
             className="relative flex items-center text-gray-700 hover:text-blue-600 transition-colors"
@@ -151,66 +161,62 @@ const Header = () => {
             <span className="ml-1 hidden lg:inline">Cart</span>
           </Link>
           
-          {/* User Auth Section */}
-          {isAuthenticated ? (
-            <div className="hidden md:flex items-center">
-              <div className="relative">
-                <button 
-                  className="flex items-center space-x-1 text-gray-700 hover:text-blue-600 transition-colors"
-                  onClick={() => setShowUserDropdown(!showUserDropdown)}
-                >
-                  <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center">
-                    <User className="h-4 w-4 text-blue-600" />
+          {/* User Profile - Always shown as Sathiyaseelan */}
+          <div className="hidden md:flex items-center">
+            <div className="relative">
+              <button 
+                className="flex items-center space-x-1 text-gray-700 hover:text-blue-600 transition-colors"
+                onClick={() => setShowUserDropdown(!showUserDropdown)}
+              >
+                <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center">
+                  <User className="h-4 w-4 text-blue-600" />
+                </div>
+                <span className="font-medium hidden lg:inline">Sathiyaseelan</span>
+              </button>
+              
+              {showUserDropdown && (
+                <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-1 z-10 border border-gray-100">
+                  <div className="px-4 py-2 border-b border-gray-100">
+                    <p className="text-sm font-medium text-gray-900">Sathiyaseelan</p>
+                    <p className="text-xs text-gray-500">sathiya@example.com</p>
                   </div>
-                  <span className="font-medium hidden lg:inline">{user?.name?.split(' ')[0]}</span>
-                </button>
-                
-                {showUserDropdown && (
-                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-1 z-10 border border-gray-100">
-                    <div className="px-4 py-2 border-b border-gray-100">
-                      <p className="text-sm font-medium text-gray-900">{user?.name}</p>
-                      <p className="text-xs text-gray-500">{user?.email}</p>
-                    </div>
+                  <Link 
+                    to="/account" 
+                    className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center"
+                    onClick={() => setShowUserDropdown(false)}
+                  >
+                    <User className="h-4 w-4 mr-2" />
+                    My Account
+                  </Link>
+                  <Link 
+                    to="/wishlist" 
+                    className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center"
+                    onClick={() => setShowUserDropdown(false)}
+                  >
+                    <Heart className="h-4 w-4 mr-2" />
+                    My Wishlist
+                  </Link>
+                  {isAdmin && (
                     <Link 
-                      to="/account" 
+                      to="/admin" 
                       className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center"
                       onClick={() => setShowUserDropdown(false)}
                     >
-                      <User className="h-4 w-4 mr-2" />
-                      My Account
+                      <Settings className="h-4 w-4 mr-2" />
+                      Admin Dashboard
                     </Link>
-                    {isAdmin && (
-                      <Link 
-                        to="/admin" 
-                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center"
-                        onClick={() => setShowUserDropdown(false)}
-                      >
-                        <Settings className="h-4 w-4 mr-2" />
-                        Admin Dashboard
-                      </Link>
-                    )}
-                    <button 
-                      onClick={handleLogout}
-                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center"
-                    >
-                      <LogOut className="h-4 w-4 mr-2" />
-                      Logout
-                    </button>
-                  </div>
-                )}
-              </div>
+                  )}
+                  <button 
+                    onClick={handleLogout}
+                    className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center"
+                  >
+                    <LogOut className="h-4 w-4 mr-2" />
+                    Logout
+                  </button>
+                </div>
+              )}
             </div>
-          ) : (
-            <Link 
-              to="/login" 
-              className="hidden md:flex items-center text-gray-700 hover:text-blue-600 transition-colors"
-            >
-              <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center mr-1">
-                <User className="h-4 w-4 text-blue-600" />
-              </div>
-              <span className="hidden lg:inline">Login</span>
-            </Link>
-          )}
+          </div>
           
           {/* Mobile menu button */}
           <button 
@@ -281,40 +287,35 @@ const Header = () => {
             ))}
             
             <div className="border-t border-gray-100 mt-2 pt-2">
-              {isAuthenticated ? (
-                <>
-                  <Link 
-                    to="/account" 
-                    className="block px-4 py-3 text-base font-medium text-gray-700 hover:bg-gray-50 rounded-lg mx-1"
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    My Account
-                  </Link>
-                  {isAdmin && (
-                    <Link 
-                      to="/admin" 
-                      className="block px-4 py-3 text-base font-medium text-gray-700 hover:bg-gray-50 rounded-lg mx-1"
-                      onClick={() => setMobileMenuOpen(false)}
-                    >
-                      Admin Dashboard
-                    </Link>
-                  )}
-                  <button 
-                    onClick={handleLogout}
-                    className="block w-full text-left px-4 py-3 text-base font-medium text-gray-700 hover:bg-gray-50 rounded-lg mx-1"
-                  >
-                    Logout
-                  </button>
-                </>
-              ) : (
+              <Link 
+                to="/account" 
+                className="block px-4 py-3 text-base font-medium text-gray-700 hover:bg-gray-50 rounded-lg mx-1"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                My Account
+              </Link>
+              <Link 
+                to="/wishlist" 
+                className="block px-4 py-3 text-base font-medium text-gray-700 hover:bg-gray-50 rounded-lg mx-1"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                My Wishlist
+              </Link>
+              {isAdmin && (
                 <Link 
-                  to="/login" 
+                  to="/admin" 
                   className="block px-4 py-3 text-base font-medium text-gray-700 hover:bg-gray-50 rounded-lg mx-1"
                   onClick={() => setMobileMenuOpen(false)}
                 >
-                  Login / Register
+                  Admin Dashboard
                 </Link>
               )}
+              <button 
+                onClick={handleLogout}
+                className="block w-full text-left px-4 py-3 text-base font-medium text-gray-700 hover:bg-gray-50 rounded-lg mx-1"
+              >
+                Logout
+              </button>
             </div>
           </div>
         </div>

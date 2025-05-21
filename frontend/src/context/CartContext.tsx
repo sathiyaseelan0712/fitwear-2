@@ -23,35 +23,78 @@ interface CartContextType {
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
-export const CartProvider = ({ children }: { children: ReactNode }) => {
-  const [items, setItems] = useState<CartItem[]>([]);
+// Default static cart items
+const DEFAULT_CART_ITEMS: Omit<CartItem, 'id'>[] = [
+  {
+    productId: 'prod_1001',
+    name: 'Classic Fit T-Shirt',
+    price: 799,
+    quantity: 2,
+    image: '/images/products/tshirt-1.jpg',
+    size: 'M',
+    color: 'Black'
+  },
+  {
+    productId: 'prod_2002',
+    name: 'Slim Fit Jeans',
+    price: 1499,
+    quantity: 1,
+    image: '/images/products/jeans-1.jpg',
+    size: '32',
+    color: 'Blue'
+  },
+  {
+    productId: 'prod_3003',
+    name: 'Sports Shorts',
+    price: 599,
+    quantity: 1,
+    image: '/images/products/shorts-1.jpg',
+    size: 'L',
+    color: 'Gray'
+  }
+];
 
-  useEffect(() => {
-    // Load cart from localStorage
+export const CartProvider = ({ children }: { children: ReactNode }) => {
+  const [items, setItems] = useState<CartItem[]>(() => {
+    // Initialize with default items only if localStorage is empty
     const savedCart = localStorage.getItem('fitwear_cart');
     if (savedCart) {
-      setItems(JSON.parse(savedCart));
+      try {
+        return JSON.parse(savedCart);
+      } catch (error) {
+        console.error('Failed to parse cart data', error);
+        localStorage.removeItem('fitwear_cart');
+      }
     }
-  }, []);
+    // Add default items with generated IDs
+    return DEFAULT_CART_ITEMS.map(item => ({
+      ...item,
+      id: generateId()
+    }));
+  });
 
+  // Save cart to localStorage whenever it changes
   useEffect(() => {
-    // Save cart to localStorage whenever it changes
     localStorage.setItem('fitwear_cart', JSON.stringify(items));
   }, [items]);
 
   const addToCart = (item: Omit<CartItem, 'id'>) => {
     setItems(prevItems => {
-      const existingItem = prevItems.find(
-        i => i.productId === item.productId && i.size === item.size && i.color === item.color
+      const existingItemIndex = prevItems.findIndex(
+        i => i.productId === item.productId && 
+             i.size === item.size && 
+             i.color === item.color
       );
-      
-      if (existingItem) {
-        return prevItems.map(i =>
-          i.id === existingItem.id ? { ...i, quantity: i.quantity + item.quantity } : i
-        );
-      } else {
-        return [...prevItems, { ...item, id: Math.random().toString(36).substr(2, 9) }];
+
+      if (existingItemIndex >= 0) {
+        const updatedItems = [...prevItems];
+        updatedItems[existingItemIndex] = {
+          ...updatedItems[existingItemIndex],
+          quantity: updatedItems[existingItemIndex].quantity + item.quantity
+        };
+        return updatedItems;
       }
+      return [...prevItems, { ...item, id: generateId() }];
     });
   };
 
@@ -64,9 +107,10 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
       removeFromCart(id);
       return;
     }
-    
     setItems(prevItems =>
-      prevItems.map(item => (item.id === id ? { ...item, quantity } : item))
+      prevItems.map(item => 
+        item.id === id ? { ...item, quantity } : item
+      )
     );
   };
 
@@ -75,7 +119,15 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
-  const cartTotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const cartTotal = items.reduce(
+    (sum, item) => sum + (item.price * item.quantity), 
+    0
+  );
+
+  const generateId = () => {
+    return Math.random().toString(36).substring(2, 15) + 
+           Math.random().toString(36).substring(2, 15);
+  };
 
   return (
     <CartContext.Provider

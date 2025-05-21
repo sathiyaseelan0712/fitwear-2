@@ -12,6 +12,11 @@ import PrivacyPolicy from './pages/static/PrivacyPolicy';
 import TermsOfService from './pages/static/TermsOfService';
 import CookiePolicy from './pages/static/CookiePolicy';
 import Accessibility from './pages/static/Accessibility';
+import Categories from './pages/Categories';
+import ProductsPage from './pages/ProductsPage';
+import WishlistPage from './pages/WishlistPage';
+import CartPage from './pages/CartPage';
+import CheckoutPage from './pages/CheckoutPage';
 
 function App() {
   return (
@@ -25,6 +30,11 @@ function App() {
               <Route index element={<Home />} />
 
               <Route path="authpage" element={<AuthPage />} />
+              <Route path="categories" element={<Categories />} />
+              <Route path="products" element={<ProductsPage />} />
+              <Route path="wishlist" element={<WishlistPage />} />
+              <Route path="cart" element={<CartPage />} />
+              <Route path="checkout" element={<CheckoutPage />} />
               
               {/* Password reset flow */}
               <Route path="forgot-password" element={<ForgotPassword />} />
