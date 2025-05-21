@@ -1,6 +1,5 @@
 const mongoose = require('mongoose');
 const validator = require('validator');
-const bcrypt = require('bcryptjs');
 
 const userSchema = new mongoose.Schema({
   name: {
@@ -51,12 +50,46 @@ const userSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Product'
   }],
-  profilePicture: String,
+  profilePicture: {
+    type: String,
+    default: 'default.jpg'
+  },
   lastLogin: Date,
   accountStatus: {
     type: String,
     enum: ['active', 'suspended', 'banned'],
     default: 'active'
+  },
+  cart: {
+    items: [{
+      product: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Product',
+        required: true
+      },
+      quantity: {
+        type: Number,
+        required: true,
+        min: 1
+      },
+      size: String,
+      color: String
+    }],
+    totalPrice: {
+      type: Number,
+      default: 0
+    }
+  },
+  preferences: {
+    newsletter: {
+      type: Boolean,
+      default: false
+    },
+    theme: {
+      type: String,
+      enum: ['light', 'dark'],
+      default: 'light'
+    }
   }
 }, {
   timestamps: true,
@@ -64,12 +97,17 @@ const userSchema = new mongoose.Schema({
   toObject: { virtuals: true }
 });
 
-
 // Virtual for getting user's orders
 userSchema.virtual('orders', {
   ref: 'Order',
   localField: '_id',
   foreignField: 'user'
 });
+
+
+// Method to compare passwords
+userSchema.methods.correctPassword = async function(candidatePassword, userPassword) {
+  return await compare(candidatePassword, userPassword);
+};
 
 module.exports = mongoose.model('User', userSchema);

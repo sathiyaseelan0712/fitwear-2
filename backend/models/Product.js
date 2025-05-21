@@ -15,7 +15,7 @@ const productSchema = new mongoose.Schema({
   colors: [{ type: String }],
   stock: { type: Number, default: 0 },
   images: [{
-    data: { type: Buffer, required: true },
+    data: { type: String, required: true }, // Changed from Buffer to String for Base64
     contentType: { type: String, required: true }
   }],
   brand: { type: String },

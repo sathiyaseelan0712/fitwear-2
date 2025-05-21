@@ -7,7 +7,6 @@ import {
   Truck,
   Home,
   ArrowLeft,
-  ChevronRight
 } from 'lucide-react';
 
 const CheckoutPage = () => {

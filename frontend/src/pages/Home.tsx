@@ -9,10 +9,22 @@ import Spinner from '../components/ui/Spinner';
 interface Product {
   _id: string;
   name: string;
-  image: string;
+  description: string;
   price: number;
+  discount?: number;
+  category: string;
   sizes: string[];
-  material: string;
+  colors?: string[];
+  stock: number;
+  images: Array<{
+    data: string;
+    contentType: string;
+  }>;
+  brand: string;
+  ratings?: {
+    average: number;
+    count: number;
+  };
 }
 
 // Fallback data while API is unavailable
@@ -20,66 +32,157 @@ const PLACEHOLDER_PRODUCTS: Product[] = [
   {
     _id: '1',
     name: 'Classic Oxford Shirt',
-    image: 'https://images.pexels.com/photos/297933/pexels-photo-297933.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2',
+    description: 'Premium cotton shirt for formal occasions',
     price: 59.99,
+    discount: 10,
+    category: 'Shirts',
     sizes: ['S', 'M', 'L', 'XL'],
-    material: 'Cotton'
+    colors: ['White', 'Blue'],
+    stock: 50,
+    images: [{
+      data: '',
+      contentType: 'image/png'
+    }],
+    brand: 'Premium Apparel',
+    ratings: {
+      average: 4.5,
+      count: 120
+    }
   },
   {
     _id: '2',
     name: 'Slim Fit Jeans',
-    image: 'https://images.pexels.com/photos/1598507/pexels-photo-1598507.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2',
+    description: 'Modern slim fit jeans with stretch technology',
     price: 79.99,
+    category: 'Jeans',
     sizes: ['S', 'M', 'L'],
-    material: 'Denim'
+    colors: ['Blue', 'Black'],
+    stock: 30,
+    images: [{
+      data: '',
+      contentType: 'image/png'
+    }],
+    brand: 'Denim Co',
+    ratings: {
+      average: 4.2,
+      count: 85
+    }
   },
   {
     _id: '3',
     name: 'Premium T-Shirt',
-    image: 'https://images.pexels.com/photos/428340/pexels-photo-428340.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2',
+    description: 'Soft cotton t-shirt for everyday wear',
     price: 29.99,
+    category: 'T-Shirts',
     sizes: ['S', 'M', 'L', 'XL', 'XXL'],
-    material: 'Cotton'
+    colors: ['White', 'Black', 'Gray'],
+    stock: 100,
+    images: [{
+      data: '',
+      contentType: 'image/png'
+    }],
+    brand: 'Basic Wear',
+    ratings: {
+      average: 4.0,
+      count: 200
+    }
   },
   {
     _id: '4',
     name: 'Wool Blend Trousers',
-    image: 'https://images.pexels.com/photos/52518/jeans-pants-blue-shop-52518.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2',
+    description: 'Elegant trousers for business casual looks',
     price: 89.99,
+    discount: 15,
+    category: 'Trousers',
     sizes: ['M', 'L', 'XL'],
-    material: 'Wool'
+    colors: ['Black', 'Gray'],
+    stock: 25,
+    images: [{
+      data: '',
+      contentType: 'image/png'
+    }],
+    brand: 'Formal Styles',
+    ratings: {
+      average: 4.7,
+      count: 45
+    }
   },
   {
     _id: '5',
     name: 'Casual Linen Shirt',
-    image: 'https://images.pexels.com/photos/6776739/pexels-photo-6776739.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2',
+    description: 'Breathable linen shirt for summer',
     price: 49.99,
+    category: 'Shirts',
     sizes: ['S', 'M', 'L'],
-    material: 'Linen'
+    colors: ['Beige', 'Blue'],
+    stock: 40,
+    images: [{
+      data: '',
+      contentType: 'image/png'
+    }],
+    brand: 'Summer Comfort',
+    ratings: {
+      average: 4.3,
+      count: 75
+    }
   },
   {
     _id: '6',
     name: 'Performance T-Shirt',
-    image: 'https://images.pexels.com/photos/7679656/pexels-photo-7679656.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2',
+    description: 'Moisture-wicking fabric for active wear',
     price: 34.99,
+    category: 'T-Shirts',
     sizes: ['S', 'M', 'L', 'XL'],
-    material: 'Polyester'
+    colors: ['Black', 'Red', 'Navy'],
+    stock: 60,
+    images: [{
+      data: '',
+      contentType: 'image/png'
+    }],
+    brand: 'Active Life',
+    ratings: {
+      average: 4.6,
+      count: 90
+    }
   },
   {
     _id: '7',
     name: 'Formal Dress Shirt',
-    image: 'https://images.pexels.com/photos/3755706/pexels-photo-3755706.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2',
+    description: 'Classic dress shirt for business occasions',
     price: 69.99,
+    category: 'Shirts',
     sizes: ['S', 'M', 'L'],
-    material: 'Cotton'
+    colors: ['White', 'Blue'],
+    stock: 35,
+    images: [{
+      data: '',
+      contentType: 'image/png'
+    }],
+    brand: 'Executive Wear',
+    ratings: {
+      average: 4.4,
+      count: 65
+    }
   },
   {
     _id: '8',
     name: 'Tailored Trousers',
-    image: 'https://images.pexels.com/photos/3782794/pexels-photo-3782794.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2',
+    description: 'Perfectly tailored trousers for a sharp look',
     price: 99.99,
+    discount: 20,
+    category: 'Trousers',
     sizes: ['M', 'L', 'XL'],
-    material: 'Wool'
+    colors: ['Black', 'Charcoal'],
+    stock: 20,
+    images: [{
+      data: '',
+      contentType: 'image/png'
+    }],
+    brand: 'Tailored Fit',
+    ratings: {
+      average: 4.8,
+      count: 50
+    }
   }
 ];
 
@@ -108,7 +211,10 @@ const Home = () => {
       } catch (error) {
         console.error('Error fetching products:', error);
         // Use placeholder data when API is unavailable
-        setProducts(PLACEHOLDER_PRODUCTS.filter(p => !category || p.material.toLowerCase() === category.toLowerCase()));
+        const filteredPlaceholders = PLACEHOLDER_PRODUCTS.filter(p => 
+          !category || p.category.toLowerCase() === category.toLowerCase()
+        );
+        setProducts(filteredPlaceholders);
         setError('Unable to connect to the server. Showing placeholder data.');
       } finally {
         setLoading(false);

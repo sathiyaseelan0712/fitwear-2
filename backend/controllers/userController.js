@@ -1,185 +1,134 @@
-const User = require('../models/User');
-const Address = require('../models/Address');
-const AppError = require('../utils/appError');
-const catchAsync = require('../utils/catchAsync');
+const User = require("../models/User");
 
-// @desc    Get user profile
-// @route   GET /api/users/me
-// @access  Private
-exports.getMe = catchAsync(async (req, res, next) => {
-  const user = await User.findById(req.user.id)
-    .populate('addresses')
-    .populate('wishlist')
-    .select('-password -resetToken -resetTokenExpiry');
-
-  if (!user) {
-    return next(new AppError('User not found', 404));
+// Get current user profile
+exports.getProfile = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id).select('-password');
+    res.json(user);
+  } catch (err) {
+    res.status(500).json({ error: "Server error" });
   }
+};
 
-  res.status(200).json({
-    status: 'success',
-    data: {
-      user
-    }
-  });
-});
+// Update user profile
+exports.updateProfile = async (req, res) => {
+  try {
+    const { name, username } = req.body;
+    const user = await User.findByIdAndUpdate(
+      req.user.id,
+      { name, username },
+      { new: true, runValidators: true }
+    ).select('-password');
+    res.json(user);
+  } catch (err) {
+    res.status(500).json({ error: "Update failed" });
+  }
+};
 
-// @desc    Update user profile
-// @route   PATCH /api/users/me
-// @access  Private
-exports.updateMe = catchAsync(async (req, res, next) => {
-  // 1) Create error if user POSTs password data
-  if (req.body.password || req.body.role) {
-    return next(
-      new AppError(
-        'This route is not for password updates. Please use /update-password.',
-        400
-      )
+// Admin: Get all users
+exports.getAllUsers = async (req, res) => {
+  try {
+    const users = await User.find().select('-password');
+    res.json(users);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to fetch users" });
+  }
+};
+
+// Admin: Delete user
+exports.deleteUser = async (req, res) => {
+  try {
+    await User.findByIdAndDelete(req.params.id);
+    res.json({ message: "User deleted" });
+  } catch (err) {
+    res.status(500).json({ error: "Delete failed" });
+  }
+};
+
+
+exports.addToCart = async (req, res) => {
+  try {
+    console.log(req.body);
+    const { productId, quantity, size, color } = req.body;
+
+    const user = await User.findById(req.user._id);
+
+    const existingItem = user.cart.items.find(item =>
+      item.product.toString() === productId &&
+      item.size === size &&
+      item.color === color
     );
-  }
 
-  // 2) Filtered out unwanted fields names that are not allowed to be updated
-  const filteredBody = {};
-  ['name', 'email', 'phone', 'profilePicture'].forEach(field => {
-    if (req.body[field]) filteredBody[field] = req.body[field];
-  });
-
-  // 3) Update user document
-  const updatedUser = await User.findByIdAndUpdate(req.user.id, filteredBody, {
-    new: true,
-    runValidators: true
-  }).select('-password -resetToken -resetTokenExpiry');
-
-  res.status(200).json({
-    status: 'success',
-    data: {
-      user: updatedUser
+    if (existingItem) {
+      existingItem.quantity += quantity;
+    } else {
+      user.cart.items.push({ product: productId, quantity, size, color });
     }
-  });
-});
 
-// @desc    Delete user account
-// @route   DELETE /api/users/me
-// @access  Private
-exports.deleteMe = catchAsync(async (req, res, next) => {
-  await User.findByIdAndUpdate(req.user.id, { accountStatus: 'suspended' });
+    // Recalculate total
+    const prices = await Promise.all(
+      user.cart.items.map(async item => {
+        const product = await Product.findById(item.product);
+        return product.price * item.quantity;
+      })
+    );
 
-  res.status(204).json({
-    status: 'success',
-    data: null
-  });
-});
+    user.cart.totalPrice = prices.reduce((acc, price) => acc + price, 0);
+    await user.save();
 
-// @desc    Update user password
-// @route   PATCH /api/users/update-password
-// @access  Private
-exports.updatePassword = catchAsync(async (req, res, next) => {
-  // 1) Get user from collection
-  const user = await User.findById(req.user.id).select('+password');
-
-  // 2) Check if POSTed current password is correct
-  if (!(await user.correctPassword(req.body.currentPassword, user.password))) {
-    return next(new AppError('Your current password is wrong.', 401));
+    res.status(200).json(user.cart);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to add to cart" });
   }
+};
 
-  // 3) If so, update password
-  user.password = req.body.newPassword;
+exports.removeFromCart = async (req, res) => {
+  const { itemId } = req.params;
+
+  const user = await User.findById(req.user._id);
+  user.cart.items = user.cart.items.filter(item => item._id.toString() !== itemId);
+
+  // Recalculate total
+  const prices = await Promise.all(
+    user.cart.items.map(async item => {
+      const product = await Product.findById(item.product);
+      return product.price * item.quantity;
+    })
+  );
+
+  user.cart.totalPrice = prices.reduce((acc, price) => acc + price, 0);
   await user.save();
 
-  // 4) Log user in, send JWT
-  const token = generateToken(user._id);
+  res.status(200).json(user.cart);
+};
 
-  res.status(200).json({
-    status: 'success',
-    token,
-    data: {
-      user
-    }
-  });
-});
+//
+// ❤️ WISHLIST CONTROLLERS
+//
+exports.getWishlist = async (req, res) => {
+  const user = await User.findById(req.user._id).populate('wishlist');
+  res.status(200).json(user.wishlist);
+};
 
-// @desc    Add address to user profile
-// @route   POST /api/users/addresses
-// @access  Private
-exports.addAddress = catchAsync(async (req, res, next) => {
-  const address = await Address.create({
-    ...req.body,
-    user: req.user.id
-  });
+exports.addToWishlist = async (req, res) => {
+  const { productId } = req.body;
 
-  await User.findByIdAndUpdate(req.user.id, {
-    $push: { addresses: address._id }
-  });
+  const user = await User.findById(req.user._id);
 
-  res.status(201).json({
-    status: 'success',
-    data: {
-      address
-    }
-  });
-});
+  if (!user.wishlist.includes(productId)) {
+    user.wishlist.push(productId);
+    await user.save();
+  }
 
-// @desc    Get all addresses for user
-// @route   GET /api/users/addresses
-// @access  Private
-exports.getAddresses = catchAsync(async (req, res, next) => {
-  const addresses = await Address.find({ user: req.user.id });
+  res.status(200).json(user.wishlist);
+};
 
-  res.status(200).json({
-    status: 'success',
-    results: addresses.length,
-    data: {
-      addresses
-    }
-  });
-});
+exports.removeFromWishlist = async (req, res) => {
+  const { productId } = req.params;
 
-// @desc    Get user wishlist
-// @route   GET /api/users/wishlist
-// @access  Private
-exports.getWishlist = catchAsync(async (req, res, next) => {
-  const user = await User.findById(req.user.id).populate('wishlist');
+  const user = await User.findById(req.user._id);
+  user.wishlist = user.wishlist.filter(pid => pid.toString() !== productId);
+  await user.save();
 
-  res.status(200).json({
-    status: 'success',
-    data: {
-      wishlist: user.wishlist
-    }
-  });
-});
-
-// @desc    Add product to wishlist
-// @route   POST /api/users/wishlist/:productId
-// @access  Private
-exports.addToWishlist = catchAsync(async (req, res, next) => {
-  const user = await User.findByIdAndUpdate(
-    req.user.id,
-    { $addToSet: { wishlist: req.params.productId } },
-    { new: true }
-  ).populate('wishlist');
-
-  res.status(200).json({
-    status: 'success',
-    data: {
-      wishlist: user.wishlist
-    }
-  });
-});
-
-// @desc    Remove product from wishlist
-// @route   DELETE /api/users/wishlist/:productId
-// @access  Private
-exports.removeFromWishlist = catchAsync(async (req, res, next) => {
-  const user = await User.findByIdAndUpdate(
-    req.user.id,
-    { $pull: { wishlist: req.params.productId } },
-    { new: true }
-  ).populate('wishlist');
-
-  res.status(200).json({
-    status: 'success',
-    data: {
-      wishlist: user.wishlist
-    }
-  });
-});
+  res.status(200).json(user.wishlist);
+};

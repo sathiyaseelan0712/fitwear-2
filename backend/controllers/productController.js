@@ -1,20 +1,36 @@
-// controllers/productController.js
 const Product = require("../models/Product");
 
 // Admin: Add new product
-// In your productController.js
 exports.addProduct = async (req, res) => {
   try {
     let { category } = req.body;
-    
-    // Remove surrounding quotes if present
     if (typeof category === 'string') {
       category = category.replace(/^"|"$/g, '');
     }
 
+    const images = [];
+    if (req.files && req.files.length > 0) {
+      req.files.forEach(file => {
+        images.push({
+          data: file.buffer.toString('base64'),
+          contentType: file.mimetype
+        });
+      });
+    } else if (req.body.images && Array.isArray(req.body.images)) {
+      req.body.images.forEach(img => {
+        if (img.data && img.contentType) {
+          images.push({
+            data: img.data,
+            contentType: img.contentType
+          });
+        }
+      });
+    }
+
     const product = new Product({
       ...req.body,
-      category // Use cleaned value
+      category,
+      images
     });
 
     await product.save();
@@ -24,17 +40,23 @@ exports.addProduct = async (req, res) => {
   }
 };
 
-// Get all products
+// ✅ FIXED: Include only first image to avoid huge data
 exports.getProducts = async (req, res) => {
   try {
-    const products = await Product.find().select("-images.data"); // Exclude binary data
+    const products = await Product.find({}, {
+      name: 1,
+      price: 1,
+      sizes: 1,
+      material: 1,
+      images: { $slice: 1 } // only send the first image
+    });
     res.json(products);
   } catch (err) {
     res.status(500).json({ error: "Server error" });
   }
 };
 
-// Get single product
+// Single product
 exports.getProduct = async (req, res) => {
   try {
     const product = await Product.findById(req.params.id);
@@ -45,7 +67,7 @@ exports.getProduct = async (req, res) => {
   }
 };
 
-// Serve product image
+// Serve image by index
 exports.getProductImage = async (req, res) => {
   try {
     const product = await Product.findById(req.params.id);
@@ -54,8 +76,10 @@ exports.getProductImage = async (req, res) => {
     }
 
     const image = product.images[req.params.imageIndex];
+    const imgBuffer = Buffer.from(image.data, 'base64');
+
     res.set("Content-Type", image.contentType);
-    res.send(image.data);
+    res.send(imgBuffer);
   } catch (err) {
     res.status(500).send("Server error");
   }

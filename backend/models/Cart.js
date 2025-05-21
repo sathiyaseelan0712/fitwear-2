@@ -1,8 +1,7 @@
-// models/Cart.js
 const mongoose = require('mongoose');
 
 const cartItemSchema = new mongoose.Schema({
-  product: { 
+  product: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Product',
     required: true
@@ -13,9 +12,12 @@ const cartItemSchema = new mongoose.Schema({
     min: 1,
     default: 1
   },
-  selectedSize: String,
-  selectedColor: String,
-  priceAtAddition: Number // Snapshot of price when added
+  size: String,
+  color: String,
+  price: {
+    type: Number,
+    required: true
+  }
 });
 
 const cartSchema = new mongoose.Schema({
@@ -26,20 +28,18 @@ const cartSchema = new mongoose.Schema({
     unique: true
   },
   items: [cartItemSchema],
-  createdAt: {
-    type: Date,
-    default: Date.now
-  },
-  updatedAt: {
-    type: Date,
-    default: Date.now
+  coupon: String,
+  discount: {
+    type: Number,
+    default: 0
   }
+}, {
+  timestamps: true
 });
 
-// Update timestamp on save
-cartSchema.pre('save', function(next) {
-  this.updatedAt = Date.now();
-  next();
+// Calculate total price virtual
+cartSchema.virtual('total').get(function() {
+  return this.items.reduce((total, item) => total + (item.price * item.quantity), 0) - this.discount;
 });
 
 module.exports = mongoose.model('Cart', cartSchema);
